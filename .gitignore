@@ -7,3 +7,7 @@ xcuserdata/
 .build/
 node_modules/
 .wrangler/
+
+# 不在公开仓库追踪 FIFA 版权图（本地仍保留，App 照常使用）
+App/Assets.xcassets/AppIcon.appiconset/*.png
+Widget/Assets.xcassets/WC26Mark.imageset/*.png
