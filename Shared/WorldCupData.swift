@@ -1,0 +1,274 @@
+import Foundation
+
+// MARK: - Models
+
+struct Match: Identifiable, Hashable {
+    let id: String
+    let home: String
+    let away: String
+    let homeScore: Int?
+    let awayScore: Int?
+    let date: Date?
+    let status: String
+    let progress: String?
+    let group: String?
+    let venue: String?
+    let city: String?
+}
+
+struct WorldCupSnapshot {
+    var live: [Match]
+    var results: [Match]
+    var upcoming: [Match]
+    var updated: Date
+}
+
+// MARK: - football-data.org v4 响应
+
+private struct FDResponse: Decodable { let matches: [FDMatch]? }
+
+private struct FDMatch: Decodable {
+    let id: Int?
+    let utcDate: String?
+    let status: String?      // SCHEDULED / TIMED / IN_PLAY / PAUSED / FINISHED / …
+    let stage: String?
+    let group: String?       // "GROUP_A" 或 null
+    let venue: String?
+    let homeTeam: FDTeam?
+    let awayTeam: FDTeam?
+    let score: FDScore?
+}
+private struct FDTeam: Decodable { let name: String?; let shortName: String?; let tla: String? }
+private struct FDScore: Decodable { let fullTime: FDScoreTime? }
+private struct FDScoreTime: Decodable { let home: Int?; let away: Int? }
+
+// MARK: - Fetcher（football-data.org）
+
+enum WorldCupAPI {
+    /// 从构建配置注入，避免把个人 API Token 提交到源码仓库。
+    static var apiToken: String {
+        Bundle.main.object(forInfoDictionaryKey: "FootballDataAPIToken") as? String ?? ""
+    }
+
+    static let matchesURL = "https://api.football-data.org/v4/competitions/WC/matches"
+
+    private static let iso: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    static func fetchSnapshot() async -> WorldCupSnapshot {
+        let today = Date()
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: today)
+        // 今天 00:00 ~ 明天 12:00（本地/北京时间）之间开球的比赛
+        let windowLower = todayStart
+        let windowUpper = cal.date(byAdding: DateComponents(day: 1, hour: 12), to: todayStart) ?? today.addingTimeInterval(36 * 3600)
+
+        let raw = await fetchAll()
+
+        var results: [Match] = []
+        var live: [Match] = []
+        var upcoming: [Match] = []
+
+        for fm in raw {
+            guard let dt = fm.utcDate.flatMap({ iso.date(from: $0) }) else { continue }
+            guard dt >= windowLower, dt <= windowUpper else { continue }
+
+            let status = (fm.status ?? "").uppercased()
+            let m = Match(
+                id: fm.id.map(String.init) ?? UUID().uuidString,
+                home: fm.homeTeam?.name ?? "",
+                away: fm.awayTeam?.name ?? "",
+                homeScore: fm.score?.fullTime?.home,
+                awayScore: fm.score?.fullTime?.away,
+                date: dt,
+                status: status,
+                progress: nil,
+                group: groupLetter(fm.group),
+                venue: fm.venue ?? Fixtures.venue(fm.homeTeam?.name ?? "", fm.awayTeam?.name ?? ""),
+                city: nil
+            )
+
+            switch status {
+            case "FINISHED", "AWARDED":
+                results.append(m)
+            case "IN_PLAY", "PAUSED", "SUSPENDED":
+                live.append(m)
+            case "SCHEDULED", "TIMED":
+                upcoming.append(m)
+            default:
+                break
+            }
+        }
+
+        let past = Date.distantPast
+        let future = Date.distantFuture
+
+        // 窗口内全部比赛，按时间正序（大号会全部展示）
+        live.sort { ($0.date ?? past) < ($1.date ?? past) }
+        let finalResults = results.sorted { ($0.date ?? past) < ($1.date ?? past) }
+        let finalUpcoming = upcoming.sorted { ($0.date ?? future) < ($1.date ?? future) }
+
+        return WorldCupSnapshot(
+            live: Array(live.prefix(6)),
+            results: finalResults,
+            upcoming: finalUpcoming,
+            updated: Date()
+        )
+    }
+
+    private static func groupLetter(_ g: String?) -> String? {
+        guard let g, !g.isEmpty else { return nil }
+        if let r = g.range(of: "GROUP_") { return String(g[r.upperBound...]) }
+        return g
+    }
+
+    private static func fetchAll() async -> [FDMatch] {
+        guard !apiToken.isEmpty else {
+            print("WorldCupWidget: missing FOOTBALL_DATA_API_TOKEN. See Config.local.xcconfig.example.")
+            return []
+        }
+        guard let url = URL(string: matchesURL) else { return [] }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 15
+        req.setValue(apiToken, forHTTPHeaderField: "X-Auth-Token")
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            return (try? JSONDecoder().decode(FDResponse.self, from: data).matches) ?? []
+        } catch {
+            return []
+        }
+    }
+
+}
+
+// MARK: - Sample data (用于预览 / 占位)
+
+extension WorldCupSnapshot {
+    static var sample: WorldCupSnapshot {
+        func date(_ s: String) -> Date {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.timeZone = TimeZone(identifier: "UTC")
+            f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            return f.date(from: s) ?? Date()
+        }
+        let results = [
+            Match(id: "r1", home: "England", away: "Croatia", homeScore: 4, awayScore: 2,
+                  date: date("2026-06-17T20:00:00"), status: "FINISHED", progress: nil, group: "L",
+                  venue: "AT&T Stadium", city: "Arlington, TX"),
+            Match(id: "r2", home: "Portugal", away: "Ghana", homeScore: 3, awayScore: 1,
+                  date: date("2026-06-18T01:00:00"), status: "FINISHED", progress: nil, group: "F",
+                  venue: "MetLife Stadium", city: "New York, NJ"),
+        ]
+        let upcoming = [
+            Match(id: "u1", home: "Mexico", away: "South Korea", homeScore: nil, awayScore: nil,
+                  date: date("2026-06-19T01:00:00"), status: "TIMED", progress: nil, group: "A",
+                  venue: "Estadio Akron", city: "Zapopan, JA"),
+            Match(id: "u2", home: "Brazil", away: "Haiti", homeScore: nil, awayScore: nil,
+                  date: date("2026-06-20T00:30:00"), status: "TIMED", progress: nil, group: "C",
+                  venue: "Lincoln Financial Field", city: "Philadelphia, PA"),
+        ]
+        return WorldCupSnapshot(live: [], results: results, upcoming: upcoming, updated: Date())
+    }
+}
+
+// MARK: - 热度（两队人气之和，用于挑选最受关注的比赛）
+
+enum Popularity {
+    static func heat(_ m: Match) -> Int { score(m.home) + score(m.away) }
+    static func score(_ team: String) -> Int { map[team] ?? 50 }
+
+    static let map: [String: Int] = [
+        "Brazil": 100, "Argentina": 100,
+        "France": 96, "England": 96, "Spain": 95, "Germany": 95, "Portugal": 94,
+        "Netherlands": 88, "Italy": 88,
+        "Belgium": 85, "Croatia": 85, "Uruguay": 84,
+        "USA": 82, "United States": 82, "Mexico": 82,            // 东道主加成
+        "Morocco": 80, "Japan": 78, "South Korea": 78, "Korea Republic": 78,
+        "Colombia": 76, "Nigeria": 74, "Denmark": 74, "Switzerland": 74,
+        "Senegal": 74, "Poland": 74, "Serbia": 72, "Canada": 72, // 东道主
+        "Cameroon": 70, "Ghana": 70, "Egypt": 70, "Norway": 70,
+        "Sweden": 68, "Turkey": 68, "Türkiye": 68, "Ivory Coast": 68,
+        "Chile": 66, "Ukraine": 66, "Wales": 66, "Australia": 66,
+        "Ecuador": 64, "Peru": 64, "Austria": 64, "Scotland": 64,
+    ]
+}
+
+extension Popularity {
+    /// 先按热度取前 n 场，再按时间正序排列
+    static func pick(_ matches: [Match], top n: Int) -> [Match] {
+        Array(matches.sorted { heat($0) > heat($1) }.prefix(n))
+            .sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
+    }
+}
+
+extension WorldCupSnapshot {
+    /// 小号轮播用：进行中(≤1) + 已完赛热度前3 + 即将开赛(≤1)
+    var smallFeatured: [Match] {
+        Array(live.prefix(1)) + Popularity.pick(results, top: 3) + Array(upcoming.prefix(1))
+    }
+}
+
+// MARK: - 格式化
+
+enum WCFormat {
+    static func clock(_ date: Date?) -> String {
+        guard let date else { return "--:--" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
+    }
+
+    static func dayLabel(_ date: Date?) -> String {
+        guard let date else { return "" }
+        let cal = Calendar.current
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: Date()), to: cal.startOfDay(for: date)).day ?? 0
+        switch days {
+        case 0: return "今天"
+        case 1: return "明天"
+        case 2: return "后天"
+        case -1: return "昨天"
+        case -2: return "前天"
+        default:
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "zh_CN")
+            f.dateFormat = "M月d日"
+            return f.string(from: date)
+        }
+    }
+
+    /// 例如「今天 06:00」（北京时间）
+    static func dayTime(_ date: Date?) -> String {
+        let d = dayLabel(date)
+        let t = clock(date)
+        return d.isEmpty ? t : "\(d) \(t)"
+    }
+
+    /// 第一行：日期+时间 · X组（组别紧跟时间后面）
+    static func metaTime(_ m: Match, withCity: Bool = false) -> String {
+        var parts: [String] = [dayTime(m.date)]
+        if let g = m.group, !g.isEmpty { parts.append("\(g)组") }
+        let v = Venues.info(venue: m.venue, rawCity: m.city)
+        if !v.stadium.isEmpty {
+            if withCity, !v.city.isEmpty {
+                parts.append("\(v.stadium)（\(v.city)）")   // 球场（城市）——大/中卡片用
+            } else {
+                parts.append(v.stadium)
+            }
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    /// 第二行：球场（城市，国家）
+    static func metaPlace(_ m: Match) -> String {
+        let v = Venues.info(venue: m.venue, rawCity: m.city)
+        let inner = [v.city, v.country].filter { !$0.isEmpty }.joined(separator: "，")
+        if inner.isEmpty { return v.stadium }
+        if v.stadium.isEmpty { return "（\(inner)）" }
+        return "\(v.stadium)（\(inner)）"
+    }
+}

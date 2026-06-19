@@ -1,0 +1,55 @@
+name: WorldCupWidget
+options:
+  bundleIdPrefix: com.charles.worldcup
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    SWIFT_EMIT_LOC_STRINGS: YES
+targets:
+  WorldCupWidget:
+    type: application
+    platform: macOS
+    configFiles:
+      Debug: Config.xcconfig
+      Release: Config.xcconfig
+    sources:
+      - path: App
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.charles.worldcup
+        PRODUCT_NAME: WorldCupWidget
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: App/App.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+        COMBINE_HIDPI_IMAGES: YES
+    dependencies:
+      - target: WorldCupWidgetExtension
+        embed: true
+  WorldCupWidgetExtension:
+    type: app-extension
+    platform: macOS
+    configFiles:
+      Debug: Config.xcconfig
+      Release: Config.xcconfig
+    sources:
+      - path: Widget
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.charles.worldcup.widget
+        PRODUCT_NAME: WorldCupWidgetExtension
+        INFOPLIST_FILE: Widget/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Widget/Widget.entitlements
+        ENABLE_PREVIEWS: YES
+        SKIP_INSTALL: YES

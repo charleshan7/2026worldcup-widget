@@ -1,0 +1,2 @@
+// Copy this file to Config.local.xcconfig and paste your football-data.org token.
+FOOTBALL_DATA_API_TOKEN =

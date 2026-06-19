@@ -1,0 +1,5 @@
+// Safe defaults committed to Git. Personal values belong in Config.local.xcconfig.
+FOOTBALL_DATA_API_TOKEN =
+
+// Optional include: the project still builds when the local file is absent.
+#include? "Config.local.xcconfig"
