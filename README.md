@@ -4,6 +4,10 @@
 
 这是一个原生 SwiftUI + WidgetKit 项目，可同时运行在 macOS 桌面小组件和菜单栏。
 
+<p align="center">
+  <img src="docs/images/worldcup-widget-preview.png" width="520" alt="2026世界杯摸鱼看球小组件预览">
+</p>
+
 ## 它能做什么
 
 - 小、中、大三种桌面组件
