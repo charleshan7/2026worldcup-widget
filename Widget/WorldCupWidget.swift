@@ -1,10 +1,21 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
+
+// 手动刷新按钮的 AppIntent：拉取最新数据并写入缓存，系统随后重载小组件。
+struct RefreshIntent: AppIntent {
+    static var title: LocalizedStringResource = "刷新比分"
+    func perform() async throws -> some IntentResult {
+        _ = await WorldCupAPI.fetchSnapshot()   // 拉最新并写入缓存
+        WidgetCenter.shared.reloadAllTimelines() // 强制重绘小组件
+        return .result()
+    }
+}
 
 struct WCEntry: TimelineEntry {
     let date: Date
     let snapshot: WorldCupSnapshot
-    var rotation: Int = 0   // 小号轮播索引
+    var rotation: Int = 0   // 小卡无进行中时的轮播索引
 }
 
 struct Provider: TimelineProvider {
@@ -25,7 +36,13 @@ struct Provider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WCEntry>) -> Void) {
         Task {
-            let snapshot = await WorldCupAPI.fetchSnapshot()
+            // 近期已缓存则直接复用（省一次网络请求 + 离线兜底）；否则联网取数
+            let snapshot: WorldCupSnapshot
+            if let cached = SharedStore.readFresh() {
+                snapshot = cached
+            } else {
+                snapshot = await WorldCupAPI.fetchSnapshot()
+            }
             let now = Date()
 
             // 自适应刷新：进行中→3分钟（追比分）；否则→30分钟，
@@ -39,18 +56,23 @@ struct Provider: TimelineProvider {
                 }
             }
 
-            // 小号轮播：每 15 秒切一张，循环到下次刷新
-            let count = max(1, snapshot.smallFeatured.count)
-            let step: TimeInterval = 15
-            var entries: [WCEntry] = []
-            var i = 0
-            while Double(i) * step < span {
-                entries.append(WCEntry(date: now.addingTimeInterval(Double(i) * step),
-                                       snapshot: snapshot, rotation: i % count))
-                i += 1
+            // 有进行中：单帧（小卡只显示进行中，不轮播）；否则：小卡轮播（每 15 秒一张）
+            if snapshot.live.isEmpty {
+                let count = max(1, snapshot.smallFeatured.count)
+                let step: TimeInterval = 15
+                var entries: [WCEntry] = []
+                var i = 0
+                while Double(i) * step < span {
+                    entries.append(WCEntry(date: now.addingTimeInterval(Double(i) * step),
+                                           snapshot: snapshot, rotation: i % count))
+                    i += 1
+                }
+                if entries.isEmpty { entries = [WCEntry(date: now, snapshot: snapshot)] }
+                completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(span))))
+            } else {
+                completion(Timeline(entries: [WCEntry(date: now, snapshot: snapshot)],
+                                    policy: .after(now.addingTimeInterval(span))))
             }
-            if entries.isEmpty { entries = [WCEntry(date: now, snapshot: snapshot)] }
-            completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(span))))
         }
     }
 }

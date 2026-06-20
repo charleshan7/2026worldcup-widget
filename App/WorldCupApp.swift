@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import WidgetKit
+import ServiceManagement
 
 // 菜单栏常驻：前台运行，自己用定时循环刷新（进行中 30s / 否则 180s），不受 WidgetKit 预算限制。
 @MainActor
@@ -8,15 +9,34 @@ final class ScoreStore: ObservableObject {
     @Published var snapshot = WorldCupSnapshot(live: [], results: [], upcoming: [], updated: Date())
     @Published var lastUpdated = Date()
     @Published var loading = true
+    @Published var launchAtLogin = false
     private var started = false
+    private var activity: NSObjectProtocol?
 
     func startIfNeeded() {
         guard !started else { return }
         started = true
+        // 防 App Nap：闲置时也不被系统挂起，保证轮询不中断（仍允许系统正常息屏睡眠）
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep], reason: "世界杯实时比分刷新")
+        // 首次启动开启「开机自启」；之后尊重用户在面板里的开关
+        if !UserDefaults.standard.bool(forKey: "didSetupLoginItem") {
+            try? SMAppService.mainApp.register()
+            UserDefaults.standard.set(true, forKey: "didSetupLoginItem")
+        }
+        launchAtLogin = (SMAppService.mainApp.status == .enabled)
         Task { @MainActor in
             while !Task.isCancelled {
                 await refresh()
-                let secs: UInt64 = snapshot.live.isEmpty ? 180 : 30
+                // 按需轮询：进行中 30s；临近开球(2h 内) 120s；其余 600s
+                let secs: UInt64
+                if !snapshot.live.isEmpty {
+                    secs = 30
+                } else if let next = snapshot.upcoming.first?.date, next.timeIntervalSinceNow < 2 * 3600 {
+                    secs = 120
+                } else {
+                    secs = 600
+                }
                 try? await Task.sleep(nanoseconds: secs * 1_000_000_000)
             }
         }
@@ -28,6 +48,14 @@ final class ScoreStore: ObservableObject {
         lastUpdated = Date()
         loading = false
         WidgetCenter.shared.reloadAllTimelines()   // 同步刷新桌面小组件
+    }
+
+    func setLaunchAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() }
+            else { try SMAppService.mainApp.unregister() }
+        } catch { }
+        launchAtLogin = (SMAppService.mainApp.status == .enabled)
     }
 }
 
@@ -71,6 +99,10 @@ struct MenuContentView: View {
 
     var body: some View {
         let s = store.snapshot
+        let matchCount = s.live.count + s.results.count + s.upcoming.count
+        let sectionCount = [s.live, s.results, s.upcoming].filter { !$0.isEmpty }.count
+        let listHeight = max(220, matchCount * 63 + sectionCount * 30)
+
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("🏆 2026世界杯摸鱼看球").font(.headline)
@@ -85,29 +117,43 @@ struct MenuContentView: View {
 
             Divider()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    section("正在进行", s.live, color: .red, upcoming: false)
-                    section("已完赛", s.results, color: .green, upcoming: false)
-                    section("即将开赛", s.upcoming, color: .orange, upcoming: true)
-                    if s.live.isEmpty && s.results.isEmpty && s.upcoming.isEmpty {
-                        Text("暂无比赛").font(.callout).foregroundStyle(.secondary)
-                    }
+            if matchCount <= 8 {
+                matchList(s)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ScrollView {
+                    matchList(s)
                 }
-                .padding(.vertical, 2)
+                .frame(height: CGFloat(min(660, listHeight)))
             }
-            .frame(maxHeight: 380)
 
             Divider()
+            Toggle("开机自启动", isOn: Binding(
+                get: { store.launchAtLogin },
+                set: { store.setLaunchAtLogin($0) }))
+                .toggleStyle(.switch).controlSize(.mini).font(.caption)
             HStack {
-                Text("进行中每30秒刷新 · 其它3分钟").font(.caption2).foregroundStyle(.secondary)
+                Text("进行中每30秒刷新").font(.caption2).foregroundStyle(.secondary)
                 Spacer()
                 Button("退出") { NSApplication.shared.terminate(nil) }
                     .buttonStyle(.borderless)
             }
         }
         .padding(14)
-        .frame(width: 340)
+        .frame(width: 390)
+    }
+
+    private func matchList(_ snapshot: WorldCupSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            section("正在进行", snapshot.live, color: .red, upcoming: false)
+            section("已完赛", snapshot.results, color: .green, upcoming: false)
+            section("即将开赛", snapshot.upcoming, color: .orange, upcoming: true)
+            if snapshot.live.isEmpty && snapshot.results.isEmpty && snapshot.upcoming.isEmpty {
+                Text("暂无比赛").font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -122,21 +168,40 @@ struct MenuContentView: View {
     }
 
     private func row(_ m: Match, upcoming: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 6) {
-                Text(Teams.info(m.home).flag)
-                Text(Teams.info(m.home).zh).lineLimit(1)
-                Spacer(minLength: 6)
+        let home = Teams.info(m.home)
+        let away = Teams.info(m.away)
+
+        return VStack(spacing: 4) {
+            Text(WCFormat.metaTime(m, withCity: true))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: 10) {
+                HStack(spacing: 5) {
+                    Spacer(minLength: 0)
+                    Text(home.zh).lineLimit(1).minimumScaleFactor(0.75)
+                    Text(home.flag)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+
                 Text(upcoming ? WCFormat.clock(m.date) : "\(m.homeScore ?? 0) : \(m.awayScore ?? 0)")
                     .bold().monospacedDigit()
                     .foregroundStyle(upcoming ? Color.orange : Color.primary)
-                Spacer(minLength: 6)
-                Text(Teams.info(m.away).zh).lineLimit(1)
-                Text(Teams.info(m.away).flag)
+                    .frame(width: 58, alignment: .center)
+
+                HStack(spacing: 5) {
+                    Text(away.flag)
+                    Text(away.zh).lineLimit(1).minimumScaleFactor(0.75)
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .font(.callout)
-            Text(WCFormat.metaTime(m)).font(.caption2).foregroundStyle(.secondary)
         }
-        .padding(.vertical, 1)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }

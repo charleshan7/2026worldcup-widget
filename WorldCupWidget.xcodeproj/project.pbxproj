@@ -9,8 +9,10 @@
 /* Begin PBXBuildFile section */
 		17D1502BB7136C892F682ADC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F032196034A74E381961DDA4 /* Assets.xcassets */; };
 		1ED287A80A1619F13E1049BB /* Venues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9340262E729DCCD8AB0C7179 /* Venues.swift */; };
+		2173D17A5FD61B969F9D257A /* SharedStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168FEA02BE66DE4454DBF421 /* SharedStore.swift */; };
 		4B43BEA4D70DD853205AFA0E /* TeamInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67CE72BF9BC95C888CDB4807 /* TeamInfo.swift */; };
 		4C6AE717F788B2097303BABC /* WorldCupData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D848D11F18ADB5FB5068BD72 /* WorldCupData.swift */; };
+		5D5E70BD968C709663117EAE /* SharedStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168FEA02BE66DE4454DBF421 /* SharedStore.swift */; };
 		7CDF6BE22965E04A02CCC44E /* WorldCupWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B5B22CECB5759D9519F8F71C /* WorldCupWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		86B13A4C23CB8BB9F9460AD5 /* WorldCupApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5913FA63D4330B80F65E99E /* WorldCupApp.swift */; };
 		91C3A0CFFBB40438BED3B1E2 /* WorldCupData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D848D11F18ADB5FB5068BD72 /* WorldCupData.swift */; };
@@ -51,6 +53,7 @@
 /* Begin PBXFileReference section */
 		0732E47F8310B5032F4B00EE /* Fixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fixtures.swift; sourceTree = "<group>"; };
 		0AC75424A5A6DAC097C018DA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		168FEA02BE66DE4454DBF421 /* SharedStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStore.swift; sourceTree = "<group>"; };
 		3B2F1E90865E7F44769D939D /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
 		678346F061A9D103CCB9B300 /* WorldCupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldCupWidget.swift; sourceTree = "<group>"; };
 		67CE72BF9BC95C888CDB4807 /* TeamInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamInfo.swift; sourceTree = "<group>"; };
@@ -65,8 +68,8 @@
 		F032196034A74E381961DDA4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F346E817796F41A42976AF06 /* WorldCupWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldCupWidgetViews.swift; sourceTree = "<group>"; };
 		F9FF98609E8853FDB80ED280 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		"TEMP_848F981F-3BAE-429E-BA6B-F628CCD4C130" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
-		"TEMP_B705E50A-A879-4B19-B90C-BED0CB6B988A" /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		"TEMP_33C7A800-D019-4A2C-9E5F-B98A8D22567A" /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		"TEMP_83973E5C-1D14-4C8A-A3D4-D30B9330BA71" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -106,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				0732E47F8310B5032F4B00EE /* Fixtures.swift */,
+				168FEA02BE66DE4454DBF421 /* SharedStore.swift */,
 				67CE72BF9BC95C888CDB4807 /* TeamInfo.swift */,
 				9340262E729DCCD8AB0C7179 /* Venues.swift */,
 				D848D11F18ADB5FB5068BD72 /* WorldCupData.swift */,
@@ -124,11 +128,11 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		"TEMP_2D3BF751-F13E-468F-818C-3EF14552FDC7" /* WorldCupWidget */ = {
+		"TEMP_257B118A-916B-49B0-8D3B-C2BB7DDA7305" /* WorldCupWidget */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_848F981F-3BAE-429E-BA6B-F628CCD4C130" /* Config.xcconfig */,
-				"TEMP_B705E50A-A879-4B19-B90C-BED0CB6B988A" /* Release.xcconfig */,
+				"TEMP_83973E5C-1D14-4C8A-A3D4-D30B9330BA71" /* Config.xcconfig */,
+				"TEMP_33C7A800-D019-4A2C-9E5F-B98A8D22567A" /* Release.xcconfig */,
 			);
 			path = WorldCupWidget;
 			sourceTree = "<group>";
@@ -238,6 +242,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D1FF982E749B71C9EFE61335 /* Fixtures.swift in Sources */,
+				5D5E70BD968C709663117EAE /* SharedStore.swift in Sources */,
 				BC31F9FB56568CA0979E0F00 /* TeamInfo.swift in Sources */,
 				946585374AE62075F5599476 /* Venues.swift in Sources */,
 				91C3A0CFFBB40438BED3B1E2 /* WorldCupData.swift in Sources */,
@@ -252,6 +257,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E071646AF1785AC3D33B444D /* Fixtures.swift in Sources */,
+				2173D17A5FD61B969F9D257A /* SharedStore.swift in Sources */,
 				4B43BEA4D70DD853205AFA0E /* TeamInfo.swift in Sources */,
 				1ED287A80A1619F13E1049BB /* Venues.swift in Sources */,
 				86B13A4C23CB8BB9F9460AD5 /* WorldCupApp.swift in Sources */,
@@ -340,7 +346,7 @@
 		};
 		A099C99B4B62A6BA49F270E5 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_B705E50A-A879-4B19-B90C-BED0CB6B988A" /* Release.xcconfig */;
+			baseConfigurationReference = "TEMP_33C7A800-D019-4A2C-9E5F-B98A8D22567A" /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
@@ -360,7 +366,7 @@
 		};
 		D5E358AFE5C36CB7A063D461 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_848F981F-3BAE-429E-BA6B-F628CCD4C130" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_83973E5C-1D14-4C8A-A3D4-D30B9330BA71" /* Config.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widget/Widget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -381,7 +387,7 @@
 		};
 		DEF56FD2C3664D931C8F6B55 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_848F981F-3BAE-429E-BA6B-F628CCD4C130" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_83973E5C-1D14-4C8A-A3D4-D30B9330BA71" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
@@ -401,7 +407,7 @@
 		};
 		E896384784F97CAEE630E4F7 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_B705E50A-A879-4B19-B90C-BED0CB6B988A" /* Release.xcconfig */;
+			baseConfigurationReference = "TEMP_33C7A800-D019-4A2C-9E5F-B98A8D22567A" /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widget/Widget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;

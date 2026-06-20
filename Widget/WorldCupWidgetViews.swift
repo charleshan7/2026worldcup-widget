@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import AppIntents
 
 extension Color {
     static let wcText = Color(red: 0.91, green: 0.92, blue: 0.95)
@@ -136,16 +137,73 @@ struct WidgetHeader: View {
                 .foregroundStyle(Color.wcText)
                 .lineLimit(1).minimumScaleFactor(0.7)
             Spacer(minLength: 4)
-            HStack(spacing: 3) {
-                Image(systemName: "arrow.clockwise").font(.system(size: 9))
-                Text(WCFormat.clock(updated)).font(.system(size: 10))
+            Button(intent: RefreshIntent()) {   // 中/大号：手动刷新
+                HStack(spacing: 3) {
+                    Image(systemName: "arrow.clockwise").font(.system(size: 9))
+                    Text(WCFormat.clock(updated)).font(.system(size: 10))
+                }
+                .foregroundStyle(Color.wcMuted)
             }
-            .foregroundStyle(Color.wcMuted)
+            .buttonStyle(.plain)
         }
     }
 }
 
 // MARK: - Large（排布 C）
+
+// 进行中比赛：突出展示，进球人+分钟放在对应球队下面、左右对称
+struct LiveHighlightView: View {
+    let m: Match
+
+    private var homeGoals: [Goal] { m.goals.filter { $0.isHome } }
+    private var awayGoals: [Goal] { m.goals.filter { !$0.isHome } }
+
+    var body: some View {
+        let home = Teams.info(m.home), away = Teams.info(m.away)
+        VStack(spacing: 4) {
+            Text(WCFormat.metaTime(m, withCity: true))
+                .font(.system(size: 10)).foregroundStyle(Color.wcDim)
+                .lineLimit(1).minimumScaleFactor(0.6)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: 8) {
+                HStack(spacing: 5) {
+                    Spacer(minLength: 0)
+                    Text(home.zh).font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.wcText).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(home.flag).font(.system(size: 18))
+                }
+                Text("\(m.homeScore ?? 0) - \(m.awayScore ?? 0)")
+                    .font(.system(size: 22, weight: .heavy)).monospacedDigit()
+                    .foregroundStyle(Color.wcText)
+                HStack(spacing: 5) {
+                    Text(away.flag).font(.system(size: 18))
+                    Text(away.zh).font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.wcText).lineLimit(1).minimumScaleFactor(0.7)
+                    Spacer(minLength: 0)
+                }
+            }
+
+            if !homeGoals.isEmpty || !awayGoals.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        ForEach(homeGoals.indices, id: \.self) { scorer(homeGoals[$0], align: .leading) }
+                    }
+                    Spacer(minLength: 0)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        ForEach(awayGoals.indices, id: \.self) { scorer(awayGoals[$0], align: .trailing) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func scorer(_ g: Goal, align: HorizontalAlignment) -> some View {
+        Text("\(g.player) \(g.minute ?? 0)'\(g.ownGoal ? " (乌龙)" : "")")
+            .font(.system(size: 10)).foregroundStyle(Color.wcMuted)
+            .lineLimit(1).minimumScaleFactor(0.6)
+    }
+}
 
 struct LargeView: View {
     let snapshot: WorldCupSnapshot
@@ -177,12 +235,14 @@ struct LargeView: View {
             WidgetHeader(updated: snapshot.updated)
 
             if !snapshot.live.isEmpty {
+                // 突出展示进行中（含进球人），去掉被挤掉的即将开赛
                 SectionTitle(text: "正在进行", color: .wcRed)
-                rows(snapshot.live, upcoming: false)
-            }
-
-            // 有已结束比赛 → 战报在上；没有 → 战报放最底
-            if snapshot.results.isEmpty {
+                ForEach(snapshot.live) { LiveHighlightView(m: $0) }
+                if !snapshot.results.isEmpty {
+                    SectionTitle(text: "已完赛", color: .wcGreen)
+                    rows(Array(snapshot.results.suffix(2)), upcoming: false)
+                }
+            } else if snapshot.results.isEmpty {
                 upcomingBlock
                 resultsBlock
             } else {
@@ -199,29 +259,25 @@ struct LargeView: View {
 struct MediumView: View {
     let snapshot: WorldCupSnapshot
 
-    // 中号规则：共 3 场，优先级 进行中 > 已完赛 > 即将开赛。
-    // 已完赛取「最近刚完成的两场」（按时间，最多2）；不足3场用即将开赛补足。
     var body: some View {
-        let live = Array(snapshot.live.prefix(3))
-        let afterLive = max(0, 3 - live.count)
-        let finished = Array(snapshot.results.suffix(min(2, afterLive)))   // 最近的若干场（升序）
-        let afterFin = max(0, afterLive - finished.count)
-        let upcoming = Array(snapshot.upcoming.prefix(afterFin))
-
         VStack(alignment: .leading, spacing: 3) {
             WidgetHeader(updated: snapshot.updated, compact: true)
 
-            if !live.isEmpty {
+            if let liveMatch = snapshot.live.first {
+                // 有进行中 → 突出展示这场（含进球人），去掉被挤掉的预告/其它
                 SectionTitle(text: "正在进行", color: .wcRed)
-                ForEach(live) { CenteredMatchRow(m: $0, upcoming: false, nameSize: 11) }
-            }
-            if !finished.isEmpty {
-                SectionTitle(text: "已完赛", color: .wcGreen)
-                ForEach(finished) { CenteredMatchRow(m: $0, upcoming: false, nameSize: 11) }
-            }
-            if !upcoming.isEmpty {
-                SectionTitle(text: "即将开赛", color: .wcAmber)
-                ForEach(upcoming) { CenteredMatchRow(m: $0, upcoming: true, nameSize: 11) }
+                LiveHighlightView(m: liveMatch)
+            } else {
+                let finished = Array(snapshot.results.suffix(2))
+                let upcoming = Array(snapshot.upcoming.prefix(finished.isEmpty ? 3 : 1))
+                if !finished.isEmpty {
+                    SectionTitle(text: "已完赛", color: .wcGreen)
+                    ForEach(finished) { CenteredMatchRow(m: $0, upcoming: false, nameSize: 11) }
+                }
+                if !upcoming.isEmpty {
+                    SectionTitle(text: "即将开赛", color: .wcAmber)
+                    ForEach(upcoming) { CenteredMatchRow(m: $0, upcoming: true, nameSize: 11) }
+                }
             }
             Spacer(minLength: 0)
         }
@@ -232,54 +288,58 @@ struct MediumView: View {
 
 struct SmallView: View {
     let snapshot: WorldCupSnapshot
-    var rotation: Int = 0   // 轮播：已完赛热度前3 + 即将开赛1（+进行中）
+    var rotation: Int = 0
 
     var body: some View {
-        let items = snapshot.smallFeatured
-        if items.isEmpty {
-            VStack(spacing: 6) {
-                Spacer()
-                Text("暂无比赛").font(.system(size: 12)).foregroundStyle(Color.wcMuted)
-                Spacer()
-            }
+        // 有进行中 → 只显示进行中那场（不轮播）；否则 → 轮播 smallFeatured（每约15秒一张）
+        if let live = snapshot.live.first {
+            card(live)
         } else {
-            let active = rotation % items.count
-            let m = items[active]
-            let upcoming = (m.homeScore == nil && m.awayScore == nil)
-            VStack(alignment: .leading, spacing: 4) {
-                header(m, count: items.count, active: active)
-                Spacer(minLength: 0)
-                teamLine(m.home, m.homeScore, showScore: !upcoming)
-                if upcoming {
-                    Text(WCFormat.clock(m.date))
-                        .font(.system(size: 17, weight: .bold)).monospacedDigit()
-                        .foregroundStyle(Color.wcAmber)
-                        .frame(maxWidth: .infinity, alignment: .center)
+            let items = snapshot.smallFeatured
+            if items.isEmpty {
+                VStack(spacing: 6) {
+                    Spacer()
+                    Text("暂无比赛").font(.system(size: 12)).foregroundStyle(Color.wcMuted)
+                    Spacer()
                 }
-                teamLine(m.away, m.awayScore, showScore: !upcoming)
-                Spacer(minLength: 0)
-                Text(WCFormat.metaTime(m))
-                    .font(.system(size: 9.5)).foregroundStyle(Color.wcDim)
-                    .lineLimit(1).minimumScaleFactor(0.55)
+            } else {
+                card(items[rotation % items.count])
             }
         }
     }
 
     @ViewBuilder
-    private func header(_ m: Match?, count: Int = 0, active: Int = 0) -> some View {
-        HStack(spacing: 4) {
-            Image("WC26Mark").resizable().scaledToFit().frame(height: 15)
-            Text(label(m)).font(.system(size: 10, weight: .semibold)).foregroundStyle(labelColor(m))
-            Spacer(minLength: 0)
-            if count > 1 {
-                HStack(spacing: 3) {
-                    ForEach(0..<count, id: \.self) { i in
-                        Circle()
-                            .fill(i == active ? Color.wcText : Color.wcDim.opacity(0.45))
-                            .frame(width: 4, height: 4)
-                    }
+    private func card(_ m: Match) -> some View {
+        let upcoming = (m.homeScore == nil && m.awayScore == nil)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Image("WC26Mark").resizable().scaledToFit().frame(height: 15)
+                Text(label(m)).font(.system(size: 10, weight: .semibold)).foregroundStyle(labelColor(m))
+                Spacer(minLength: 0)
+                Text(WCFormat.clock(snapshot.updated))
+                    .font(.system(size: 9))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.wcMuted)
+                Button(intent: RefreshIntent()) {   // 时间独立显示，按钮只负责刷新
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(Color.wcMuted)
                 }
+                .buttonStyle(.plain)
             }
+            Spacer(minLength: 0)
+            teamLine(m.home, m.homeScore, showScore: !upcoming)
+            if upcoming {
+                Text(WCFormat.clock(m.date))
+                    .font(.system(size: 17, weight: .bold)).monospacedDigit()
+                    .foregroundStyle(Color.wcAmber)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            teamLine(m.away, m.awayScore, showScore: !upcoming)
+            Spacer(minLength: 0)
+            Text(WCFormat.metaTime(m))
+                .font(.system(size: 9.5)).foregroundStyle(Color.wcDim)
+                .lineLimit(1).minimumScaleFactor(0.55)
         }
     }
 
@@ -300,13 +360,11 @@ struct SmallView: View {
     private func isLive(_ m: Match) -> Bool {
         ["IN_PLAY", "PAUSED", "SUSPENDED"].contains(m.status)
     }
-    private func label(_ m: Match?) -> String {
-        guard let m else { return "美加墨世界杯" }
+    private func label(_ m: Match) -> String {
         if isLive(m) { return "进行中" }
         return (m.homeScore == nil) ? "即将开赛" : "已完赛"
     }
-    private func labelColor(_ m: Match?) -> Color {
-        guard let m else { return .wcMuted }
+    private func labelColor(_ m: Match) -> Color {
         if isLive(m) { return .wcRed }
         return (m.homeScore == nil) ? .wcAmber : .wcGreen
     }

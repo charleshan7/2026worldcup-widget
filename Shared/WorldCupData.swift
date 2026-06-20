@@ -2,7 +2,14 @@ import Foundation
 
 // MARK: - Models
 
-struct Match: Identifiable, Hashable {
+struct Goal: Codable, Hashable {
+    let player: String
+    let minute: Int?
+    let isHome: Bool
+    let ownGoal: Bool
+}
+
+struct Match: Identifiable, Hashable, Codable {
     let id: String
     let home: String
     let away: String
@@ -14,9 +21,10 @@ struct Match: Identifiable, Hashable {
     let group: String?
     let venue: String?
     let city: String?
+    var goals: [Goal] = []   // 进球人+分钟（由数据代理补全，拿得到才有）
 }
 
-struct WorldCupSnapshot {
+struct WorldCupSnapshot: Codable {
     var live: [Match]
     var results: [Match]
     var upcoming: [Match]
@@ -37,6 +45,7 @@ private struct FDMatch: Decodable {
     let homeTeam: FDTeam?
     let awayTeam: FDTeam?
     let score: FDScore?
+    let goals: [Goal]?
 }
 private struct FDTeam: Decodable { let name: String?; let shortName: String?; let tla: String? }
 private struct FDScore: Decodable { let fullTime: FDScoreTime? }
@@ -57,8 +66,12 @@ enum WorldCupAPI {
 
     static let matchesURL = "https://api.football-data.org/v4/competitions/WC/matches"
 
-    // 临时：模拟休赛日（清空窗口 → 回退展示未来比赛）。演示完改回 false 即恢复实时。
+    // 模拟休赛日（清空窗口 → 回退展示未来比赛）。仅 Debug 可开，发布版恒为 false。
+    #if DEBUG
+    static let debugForceRestDay = false   // 演示休赛日时临时改 true
+    #else
     static let debugForceRestDay = false
+    #endif
 
     private static let iso: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
@@ -75,6 +88,9 @@ enum WorldCupAPI {
         let windowUpper = cal.date(byAdding: DateComponents(day: 1, hour: 12), to: todayStart) ?? today.addingTimeInterval(36 * 3600)
 
         let raw = await fetchAll()
+        if raw.isEmpty {   // 网络/配置失败：回退到上次缓存，避免误显示空
+            return SharedStore.read() ?? WorldCupSnapshot(live: [], results: [], upcoming: [], updated: Date())
+        }
 
         let finishedStatuses: Set<String> = ["FINISHED", "AWARDED"]
         let liveStatuses: Set<String> = ["IN_PLAY", "PAUSED", "SUSPENDED"]
@@ -94,7 +110,8 @@ enum WorldCupAPI {
                 progress: nil,
                 group: groupLetter(fm.group),
                 venue: fm.venue ?? Fixtures.venue(fm.homeTeam?.name ?? "", fm.awayTeam?.name ?? ""),
-                city: nil
+                city: nil,
+                goals: fm.goals ?? []
             )
         }
 
@@ -112,6 +129,7 @@ enum WorldCupAPI {
         }
 
         if debugForceRestDay { live = []; results = []; upcoming = [] }   // 模拟休赛日
+
         live.sort { ($0.date ?? past) < ($1.date ?? past) }
         let finalResults = results.sorted { ($0.date ?? past) < ($1.date ?? past) }
         var finalUpcoming = upcoming.sorted { ($0.date ?? future) < ($1.date ?? future) }
@@ -127,12 +145,14 @@ enum WorldCupAPI {
             finalUpcoming = Array(finalUpcoming.prefix(6))
         }
 
-        return WorldCupSnapshot(
+        let snapshot = WorldCupSnapshot(
             live: Array(live.prefix(6)),
             results: finalResults,
             upcoming: finalUpcoming,
             updated: Date()
         )
+        SharedStore.write(snapshot)   // 写入进程内缓存：减少重复请求 + 离线兜底
+        return snapshot
     }
 
     private static func groupLetter(_ g: String?) -> String? {

@@ -18,6 +18,16 @@
 - 安装包通过 Cloudflare Worker 安全获取数据，不会在 App 中暴露 API Token
 - 内置 AI Skill，可帮助快速换主题、改布局或生成同款
 
+## 最新改进
+
+- 菜单栏比赛采用居中三栏布局，并显示球场所在城市
+- 8 场以内一次性完整展示，超过 8 场才出现滚动
+- 小卡右上角显示更新时间，并支持手动刷新
+- 进行中的比赛突出显示，可展示进球球员与分钟
+- 增加离线缓存，网络异常时保留上一次有效赛况
+- 增加开机自启动开关，并根据比赛状态智能调整刷新频率
+- Worker 使用 ESPN 与 TheSportsDB 补全进球信息
+
 ## 怎么使用
 
 ### 1. 我只想直接用
@@ -89,6 +99,8 @@ Skill 会引导 AI 找到正确文件、保护 API Token、重新生成项目并
 ## 数据与商标
 
 比赛数据由 football-data.org 提供，实际覆盖范围、刷新频率和额度取决于其服务计划。世界杯、FIFA 名称及相关标志属于各自权利人；公开分发前请确认图像和商标授权。
+
+为避免公开分发 FIFA 版权图，仓库**未包含**会徽/奖杯图片（App 图标 `App/Assets.xcassets/AppIcon.appiconset/*.png` 与组件标志 `Widget/Assets.xcassets/WC26Mark.imageset/*.png`，已在 `.gitignore` 中忽略）。克隆后这些位置会是空白，请自备图片或改用通用图标（如 SF Symbol `trophy.fill`）。
 
 ## License
 
