@@ -2,14 +2,29 @@ import SwiftUI
 import WidgetKit
 import AppIntents
 
+// 跟随系统外观：颜色取自资源目录的颜色集（每个含 Light/Dark 两套），
+// WidgetKit 会按小组件当前 colorScheme 严格解析，实现白天白底/夜间黑底。
 extension Color {
-    static let wcText = Color(red: 0.91, green: 0.92, blue: 0.95)
-    static let wcMuted = Color(red: 0.58, green: 0.60, blue: 0.66)
-    static let wcDim = Color(red: 0.44, green: 0.46, blue: 0.52)
-    static let wcGreen = Color(red: 0.24, green: 0.86, blue: 0.59)
-    static let wcAmber = Color(red: 1.0, green: 0.82, blue: 0.40)
-    static let wcRed = Color(red: 1.0, green: 0.33, blue: 0.44)
-    static let wcGold = Color(red: 0.93, green: 0.76, blue: 0.38)
+    static let wcText  = Color("WCText")
+    static let wcMuted = Color("WCMuted")
+    static let wcDim   = Color("WCDim")
+    static let wcGreen = Color("WCGreen")
+    static let wcAmber = Color("WCAmber")
+    static let wcRed   = Color("WCRed")
+    static let wcGold  = Color("WCGold")
+    static let wcBgTop    = Color("WCBgTop")
+    static let wcBgBottom = Color("WCBgBottom")
+}
+
+extension View {
+    // 按外观偏好强制 colorScheme；.system 时不覆盖，交还系统跟随。
+    @ViewBuilder func widgetTheme(_ theme: WidgetTheme) -> some View {
+        switch theme {
+        case .system: self
+        case .light:  self.environment(\.colorScheme, .light)
+        case .dark:   self.environment(\.colorScheme, .dark)
+        }
+    }
 }
 
 // MARK: - 区块标题

@@ -10,12 +10,14 @@ final class ScoreStore: ObservableObject {
     @Published var lastUpdated = Date()
     @Published var loading = true
     @Published var launchAtLogin = false
+    @Published var theme: WidgetTheme = ThemePref.get()
     private var started = false
     private var activity: NSObjectProtocol?
 
     func startIfNeeded() {
         guard !started else { return }
         started = true
+        ThemePref.set(theme)   // 启动即写入共享容器，确保组件有值可读
         // 防 App Nap：闲置时也不被系统挂起，保证轮询不中断（仍允许系统正常息屏睡眠）
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep], reason: "世界杯实时比分刷新")
@@ -57,6 +59,12 @@ final class ScoreStore: ObservableObject {
             else { try SMAppService.mainApp.unregister() }
         } catch { }
         launchAtLogin = (SMAppService.mainApp.status == .enabled)
+    }
+
+    func setTheme(_ t: WidgetTheme) {
+        theme = t
+        ThemePref.set(t)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
@@ -129,6 +137,18 @@ struct MenuContentView: View {
             }
 
             Divider()
+            HStack(spacing: 8) {
+                Text("小组件外观").font(.caption).foregroundStyle(.secondary)
+                Picker("", selection: Binding(
+                    get: { store.theme },
+                    set: { store.setTheme($0) })) {
+                    Text("跟随系统").tag(WidgetTheme.system)
+                    Text("白").tag(WidgetTheme.light)
+                    Text("黑").tag(WidgetTheme.dark)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
             Toggle("开机自启动", isOn: Binding(
                 get: { store.launchAtLogin },
                 set: { store.setLaunchAtLogin($0) }))

@@ -103,11 +103,12 @@ struct WorldCupWidget: Widget {
             WorldCupWidgetEntryView(entry: entry)
                 .containerBackground(for: .widget) {
                     LinearGradient(
-                        colors: [Color(red: 0.10, green: 0.11, blue: 0.16),
-                                 Color(red: 0.05, green: 0.06, blue: 0.09)],
+                        colors: [Color.wcBgTop, Color.wcBgBottom],
                         startPoint: .top, endPoint: .bottom
                     )
+                    .widgetTheme(ThemePref.get())   // 背景底色也跟随主题翻转
                 }
+                .widgetTheme(ThemePref.get())   // 跟随系统 / 强制白 / 强制黑
         }
         .configurationDisplayName("2026世界杯摸鱼看球小组件")
         .description("在 Mac 桌面悄悄查看 2026 世界杯实时比分、已完赛和即将开赛的比赛。")

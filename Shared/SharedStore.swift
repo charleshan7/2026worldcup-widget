@@ -1,5 +1,25 @@
 import Foundation
 
+// 小组件外观偏好：跟随系统 / 强制白底 / 强制黑底
+enum WidgetTheme: String, CaseIterable {
+    case system, light, dark
+}
+
+// 跨进程共享外观偏好。菜单栏 App 写、小组件读。
+// 走 App Group 共享容器（构建后用 codesign 补签 group.com.charles.worldcup 这条 entitlement）。
+enum ThemePref {
+    static let groupID = "group.com.charles.worldcup"
+    private static let key = "widgetTheme"
+    private static var store: UserDefaults { UserDefaults(suiteName: groupID) ?? .standard }
+
+    static func get() -> WidgetTheme {
+        WidgetTheme(rawValue: store.string(forKey: key) ?? "") ?? .system
+    }
+    static func set(_ theme: WidgetTheme) {
+        store.set(theme.rawValue, forKey: key)
+    }
+}
+
 // 本地缓存：保存上次成功取到的赛况快照。
 // 用途：① 网络/配置失败时回退展示上次数据（避免误显示空）；
 //       ② 小组件手动刷新后短暂复用，避免紧接着重复请求。

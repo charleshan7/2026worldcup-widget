@@ -156,8 +156,13 @@ async function enrich(matches) {
         ownGoal: g.ownGoal,
       }));
     }
-    // 直播分钟/阶段（ESPN 报告进行中时）：供"正在进行"显示进程时间/中场休息
-    if (e && e.state === "in") {
+    if (e?.state === "post") {
+      // ESPN 已确认完赛时，立即纠正可能仍滞后的主数据源状态。
+      m.status = "FINISHED";
+      delete m.minute;
+      m.phase = e.name || "STATUS_FINAL";
+    } else if (e?.state === "in") {
+      // 直播分钟/阶段：供“正在进行”显示进程时间/中场休息。
       m.minute = e.minute;
       m.phase = e.name;
     }

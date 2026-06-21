@@ -54,7 +54,9 @@
 		0732E47F8310B5032F4B00EE /* Fixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fixtures.swift; sourceTree = "<group>"; };
 		0AC75424A5A6DAC097C018DA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		168FEA02BE66DE4454DBF421 /* SharedStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStore.swift; sourceTree = "<group>"; };
+		22E8390831B599C862812A6B /* Widget.appgroup.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.appgroup.entitlements; sourceTree = "<group>"; };
 		3B2F1E90865E7F44769D939D /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
+		5F96BE02B88035A07CB42648 /* App.appgroup.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.appgroup.entitlements; sourceTree = "<group>"; };
 		678346F061A9D103CCB9B300 /* WorldCupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldCupWidget.swift; sourceTree = "<group>"; };
 		67CE72BF9BC95C888CDB4807 /* TeamInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamInfo.swift; sourceTree = "<group>"; };
 		68E8BE72139BC4E019F32B35 /* WorldCupWidget.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorldCupWidget.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -68,8 +70,8 @@
 		F032196034A74E381961DDA4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F346E817796F41A42976AF06 /* WorldCupWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldCupWidgetViews.swift; sourceTree = "<group>"; };
 		F9FF98609E8853FDB80ED280 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		"TEMP_802E4AC6-3C38-4341-A8CA-888586510CB6" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
-		"TEMP_F965C445-176E-41E2-849C-A8B7938181B7" /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		"TEMP_5F5DA071-F81D-40B2-9DE8-B17E381A603B" /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		"TEMP_ED76E334-6B5E-435D-9D65-5D812AF2FD4F" /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -87,6 +89,7 @@
 			children = (
 				F032196034A74E381961DDA4 /* Assets.xcassets */,
 				F9FF98609E8853FDB80ED280 /* Info.plist */,
+				22E8390831B599C862812A6B /* Widget.appgroup.entitlements */,
 				3B2F1E90865E7F44769D939D /* Widget.entitlements */,
 				678346F061A9D103CCB9B300 /* WorldCupWidget.swift */,
 				783FD66FF839174ECFBA9F04 /* WorldCupWidgetBundle.swift */,
@@ -120,6 +123,7 @@
 		934B9479B6461E39A0A6F6FE /* App */ = {
 			isa = PBXGroup;
 			children = (
+				5F96BE02B88035A07CB42648 /* App.appgroup.entitlements */,
 				7FE2397182AA37932D4CD594 /* App.entitlements */,
 				81DD6D274021649C8A9083CC /* Assets.xcassets */,
 				0AC75424A5A6DAC097C018DA /* Info.plist */,
@@ -128,11 +132,11 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		"TEMP_0F65E0F7-56AB-41C1-9CBC-93EC0FE52EB8" /* WorldCupWidget */ = {
+		"TEMP_EB5BCFD9-4313-44D0-92AB-1473C99080AB" /* WorldCupWidget */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_802E4AC6-3C38-4341-A8CA-888586510CB6" /* Config.xcconfig */,
-				"TEMP_F965C445-176E-41E2-849C-A8B7938181B7" /* Release.xcconfig */,
+				"TEMP_ED76E334-6B5E-435D-9D65-5D812AF2FD4F" /* Config.xcconfig */,
+				"TEMP_5F5DA071-F81D-40B2-9DE8-B17E381A603B" /* Release.xcconfig */,
 			);
 			path = WorldCupWidget;
 			sourceTree = "<group>";
@@ -311,7 +315,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -331,7 +335,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -346,7 +350,7 @@
 		};
 		A099C99B4B62A6BA49F270E5 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_F965C445-176E-41E2-849C-A8B7938181B7" /* Release.xcconfig */;
+			baseConfigurationReference = "TEMP_5F5DA071-F81D-40B2-9DE8-B17E381A603B" /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
@@ -366,7 +370,7 @@
 		};
 		D5E358AFE5C36CB7A063D461 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_802E4AC6-3C38-4341-A8CA-888586510CB6" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_ED76E334-6B5E-435D-9D65-5D812AF2FD4F" /* Config.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widget/Widget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -387,7 +391,7 @@
 		};
 		DEF56FD2C3664D931C8F6B55 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_802E4AC6-3C38-4341-A8CA-888586510CB6" /* Config.xcconfig */;
+			baseConfigurationReference = "TEMP_ED76E334-6B5E-435D-9D65-5D812AF2FD4F" /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
@@ -407,7 +411,7 @@
 		};
 		E896384784F97CAEE630E4F7 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_F965C445-176E-41E2-849C-A8B7938181B7" /* Release.xcconfig */;
+			baseConfigurationReference = "TEMP_5F5DA071-F81D-40B2-9DE8-B17E381A603B" /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Widget/Widget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -461,7 +465,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -475,7 +479,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
