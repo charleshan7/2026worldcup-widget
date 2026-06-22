@@ -5,18 +5,28 @@ enum WidgetTheme: String, CaseIterable {
     case system, light, dark
 }
 
-// 跨进程共享外观偏好。菜单栏 App 写、小组件读。
-// 走 App Group 共享容器（构建后用 codesign 补签 group.com.charles.worldcup 这条 entitlement）。
-enum ThemePref {
-    static let groupID = "group.com.charles.worldcup"
-    private static let key = "widgetTheme"
-    private static var store: UserDefaults { UserDefaults(suiteName: groupID) ?? .standard }
+// 菜单栏 App 本地服务的地址（App 与组件共用）：一次返回「外观 + 最新比分」。
+enum ThemeServerInfo {
+    static let port: UInt16 = 47633
+    static var endpoint: String { "http://127.0.0.1:\(port)/data" }
+}
 
+// 本地服务的载荷：菜单栏 App 把当前外观与最新赛况一起供给桌面组件，
+// 组件本地取数既快又新（App 每 30 秒刷新），免去每次远程拉取的延迟。
+struct LocalPayload: Codable {
+    let theme: String
+    let snapshot: WorldCupSnapshot
+}
+
+// 菜单栏面板的外观偏好（仅 App 进程使用，控制下拉面板 NSApp.appearance）。
+// 用 App 自己的 UserDefaults.standard 持久化即可——组件被沙盒隔离读不到，故不走共享容器。
+enum ThemePref {
+    private static let key = "panelAppearance"
     static func get() -> WidgetTheme {
-        WidgetTheme(rawValue: store.string(forKey: key) ?? "") ?? .system
+        WidgetTheme(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .system
     }
     static func set(_ theme: WidgetTheme) {
-        store.set(theme.rawValue, forKey: key)
+        UserDefaults.standard.set(theme.rawValue, forKey: key)
     }
 }
 

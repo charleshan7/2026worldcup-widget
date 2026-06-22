@@ -16,6 +16,19 @@ struct WCEntry: TimelineEntry {
     let date: Date
     let snapshot: WorldCupSnapshot
     var rotation: Int = 0   // 小卡无进行中时的轮播索引
+    var theme: String = "system"   // 来自菜单栏 App 的本地服务：system/light/dark
+}
+
+// 优先从菜单栏 App 的本地服务取「外观 + 最新比分」（快、且数据更新）。
+// App 没开 / 端口不通 → nil，调用方回退缓存或远程。
+func fetchLocalData() async -> (WorldCupSnapshot, String)? {
+    guard let url = URL(string: ThemeServerInfo.endpoint) else { return nil }
+    var req = URLRequest(url: url)
+    req.timeoutInterval = 2
+    req.cachePolicy = .reloadIgnoringLocalCacheData
+    guard let (data, _) = try? await URLSession.shared.data(for: req),
+          let p = try? JSONDecoder().decode(LocalPayload.self, from: data) else { return nil }
+    return (p.snapshot, p.theme)
 }
 
 struct Provider: TimelineProvider {
@@ -29,8 +42,12 @@ struct Provider: TimelineProvider {
             return
         }
         Task {
-            let snapshot = await WorldCupAPI.fetchSnapshot()
-            completion(WCEntry(date: Date(), snapshot: snapshot))
+            if let (s, t) = await fetchLocalData() {
+                completion(WCEntry(date: Date(), snapshot: s, theme: t))
+            } else {
+                let snapshot = await WorldCupAPI.fetchSnapshot()
+                completion(WCEntry(date: Date(), snapshot: snapshot, theme: "system"))
+            }
         }
     }
 
@@ -39,10 +56,16 @@ struct Provider: TimelineProvider {
             // 菜单栏刷新后会要求 WidgetKit 重载时间线。这里只复用 5 秒内的缓存
             // （供小组件自身的刷新按钮衔接），其余情况重新联网，避免卡片停留在旧比分。
             let snapshot: WorldCupSnapshot
-            if let cached = SharedStore.readFresh(maxAge: 5) {
+            let theme: String
+            if let (s, t) = await fetchLocalData() {            // 本地优先：快 + 新 + 带外观
+                snapshot = s
+                theme = t
+            } else if let cached = SharedStore.readFresh(maxAge: 5) {
                 snapshot = cached
+                theme = "system"
             } else {
                 snapshot = await WorldCupAPI.fetchSnapshot()
+                theme = "system"
             }
             let now = Date()
 
@@ -58,23 +81,24 @@ struct Provider: TimelineProvider {
                 }
             }
 
-            // 有进行中：单帧（小卡只显示进行中，不轮播）；否则：小卡轮播（每 15 秒一张）
-            if snapshot.live.isEmpty {
-                let count = max(1, snapshot.smallFeatured.count)
-                let step: TimeInterval = 15
-                var entries: [WCEntry] = []
-                var i = 0
-                while Double(i) * step < span {
-                    entries.append(WCEntry(date: now.addingTimeInterval(Double(i) * step),
-                                           snapshot: snapshot, rotation: i % count))
-                    i += 1
-                }
-                if entries.isEmpty { entries = [WCEntry(date: now, snapshot: snapshot)] }
-                completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(span))))
-            } else {
-                completion(Timeline(entries: [WCEntry(date: now, snapshot: snapshot)],
+            // 中/大卡不轮播 → 单帧，最省、重载最快（避免一次性塞入上百帧拖慢外观切换）。
+            if context.family != .systemSmall || !snapshot.live.isEmpty {
+                completion(Timeline(entries: [WCEntry(date: now, snapshot: snapshot, theme: theme)],
                                     policy: .after(now.addingTimeInterval(span))))
+                return
             }
+
+            // 小卡且无进行中 → 轮播（每 15 秒一张），帧数封顶以减小载荷、加快重载。
+            let count = max(1, snapshot.smallFeatured.count)
+            let step: TimeInterval = 15
+            let maxEntries = min(Int(span / step), 20)   // 封顶 20 帧（约 5 分钟），到点再重载
+            var entries: [WCEntry] = []
+            for i in 0..<max(1, maxEntries) {
+                entries.append(WCEntry(date: now.addingTimeInterval(Double(i) * step),
+                                       snapshot: snapshot, rotation: i % count, theme: theme))
+            }
+            let carouselSpan = Double(entries.count) * step
+            completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(carouselSpan))))
         }
     }
 }
@@ -95,20 +119,36 @@ struct WorldCupWidgetEntryView: View {
     }
 }
 
+// 渲染前算出生效外观写入进程内全局，颜色据此显式取浅/深值。
+// 外观来自菜单栏 App 的本地服务（entry.theme）：light/dark 强制，否则跟随系统 @Environment(\.colorScheme)。
+struct ThemedContainer: View {
+    let entry: WCEntry
+    @Environment(\.colorScheme) private var systemScheme
+
+    var body: some View {
+        let scheme: ColorScheme
+        switch entry.theme {
+        case "light": scheme = .light
+        case "dark":  scheme = .dark
+        default:      scheme = systemScheme   // system / 取不到 → 跟随系统
+        }
+        WCColors.dark = (scheme == .dark)
+        return WorldCupWidgetEntryView(entry: entry)
+            .containerBackground(for: .widget) {
+                LinearGradient(
+                    colors: [Color.wcBgTop, Color.wcBgBottom],
+                    startPoint: .top, endPoint: .bottom
+                )
+            }
+    }
+}
+
 struct WorldCupWidget: Widget {
     let kind = "WorldCupWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
-            WorldCupWidgetEntryView(entry: entry)
-                .containerBackground(for: .widget) {
-                    LinearGradient(
-                        colors: [Color.wcBgTop, Color.wcBgBottom],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                    .widgetTheme(ThemePref.get())   // 背景底色也跟随主题翻转
-                }
-                .widgetTheme(ThemePref.get())   // 跟随系统 / 强制白 / 强制黑
+            ThemedContainer(entry: entry)
         }
         .configurationDisplayName("2026世界杯摸鱼看球小组件")
         .description("在 Mac 桌面悄悄查看 2026 世界杯实时比分、已完赛和即将开赛的比赛。")

@@ -13,20 +13,20 @@ final class ScoreStore: ObservableObject {
     @Published var theme: WidgetTheme = ThemePref.get()
     private var started = false
     private var activity: NSObjectProtocol?
+    private let themeServer = ThemeServer()   // 供桌面组件读取外观的本地服务
 
     func startIfNeeded() {
         guard !started else { return }
         started = true
-        ThemePref.set(theme)   // 启动即写入共享容器，确保组件有值可读
+        applyPanelAppearance() // 启动即按偏好设好面板外观
+        themeServer.start()    // 起本地服务，组件取数据时来读外观+比分
+        publishLocal()
         // 防 App Nap：闲置时也不被系统挂起，保证轮询不中断（仍允许系统正常息屏睡眠）
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep], reason: "世界杯实时比分刷新")
-        // 首次启动开启「开机自启」；之后尊重用户在面板里的开关
-        if !UserDefaults.standard.bool(forKey: "didSetupLoginItem") {
-            try? SMAppService.mainApp.register()
-            UserDefaults.standard.set(true, forKey: "didSetupLoginItem")
-        }
-        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        // 每次启动校正登录项（自愈）：ad-hoc 签名把代码哈希钉进登录项记录，
+        // 重装/重建后哈希变化会让旧记录失效，这里据用户意愿用当前哈希重新登记。
+        reconcileLoginItem()
         Task { @MainActor in
             while !Task.isCancelled {
                 await refresh()
@@ -49,22 +49,85 @@ final class ScoreStore: ObservableObject {
         snapshot = await WorldCupAPI.fetchSnapshot()
         lastUpdated = Date()
         loading = false
-        // 指定刷新世界杯组件。组件 Provider 会重新联网取数，不再复用分钟级旧缓存。
+        publishLocal()   // 把最新赛况供给本地服务，组件本地取数既快又新
+        // 指定刷新世界杯组件。组件优先从本地服务取「外观+比分」。
         WidgetCenter.shared.reloadTimelines(ofKind: "WorldCupWidget")
     }
 
+    // 把当前外观 + 最新赛况编码后供给本地服务（桌面组件来读）。
+    private func publishLocal() {
+        let payload = LocalPayload(theme: theme.rawValue, snapshot: snapshot)
+        if let data = try? JSONEncoder().encode(payload) {
+            themeServer.setPayload(data)
+        }
+    }
+
     func setLaunchAtLogin(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: "wantsLoginItem")
         do {
-            if on { try SMAppService.mainApp.register() }
-            else { try SMAppService.mainApp.unregister() }
+            if on {
+                try? SMAppService.mainApp.unregister()   // 先清旧记录，再用当前哈希登记
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
         } catch { }
+        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+    }
+
+    // 据用户意愿 + 可执行文件指纹，校正登录项；重装(哈希变)时自动重新登记。
+    private func reconcileLoginItem() {
+        let wants = UserDefaults.standard.object(forKey: "wantsLoginItem") as? Bool ?? true  // 首次默认开
+        // 指纹同时含「bundle 路径 + 可执行文件修改时间」：路径变化（如从 DMG 暂存目录搬到
+        // /Applications）也必须重新登记，否则登录项会指向已被删除的旧路径，开机拉不起来。
+        var stamp = Bundle.main.bundlePath
+        if let url = Bundle.main.executableURL,
+           let vals = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+           let date = vals.contentModificationDate {
+            stamp += "@" + String(format: "%.0f", date.timeIntervalSince1970)
+        }
+        let changed = UserDefaults.standard.string(forKey: "loginItemStamp") != stamp
+        do {
+            if wants {
+                if changed || SMAppService.mainApp.status != .enabled {
+                    try? SMAppService.mainApp.unregister()
+                    try SMAppService.mainApp.register()
+                }
+            } else if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch { }
+        UserDefaults.standard.set(stamp, forKey: "loginItemStamp")
         launchAtLogin = (SMAppService.mainApp.status == .enabled)
     }
 
     func setTheme(_ t: WidgetTheme) {
         theme = t
         ThemePref.set(t)
-        WidgetCenter.shared.reloadAllTimelines()
+        applyPanelAppearance()
+        publishLocal()                             // 立刻把新外观供给本地服务
+        WidgetCenter.shared.reloadAllTimelines()   // 组件立即重新取外观
+    }
+
+    // 强制整个 App（含菜单栏下拉面板）的外观；.system 时交还系统。
+    // 比 SwiftUI 的 .preferredColorScheme 更可靠——后者管不动 MenuBarExtra 窗口的材质背景。
+    func applyPanelAppearance() {
+        switch theme {
+        case .system: NSApp.appearance = nil
+        case .light:  NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:   NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
+extension WidgetTheme {
+    // 面板/窗口可用 .preferredColorScheme 强制外观（与小组件不同，App 窗口支持覆写）。
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light:  return .light
+        case .dark:   return .dark
+        }
     }
 }
 
@@ -75,6 +138,7 @@ struct WorldCupApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuContentView(store: store)
+                .preferredColorScheme(store.theme.colorScheme)   // 面板也跟随「外观」开关
         } label: {
             MenuBarLabel(store: store)
         }
@@ -138,7 +202,7 @@ struct MenuContentView: View {
 
             Divider()
             HStack(spacing: 8) {
-                Text("小组件外观").font(.caption).foregroundStyle(.secondary)
+                Text("外观").font(.caption).foregroundStyle(.secondary)
                 Picker("", selection: Binding(
                     get: { store.theme },
                     set: { store.setTheme($0) })) {

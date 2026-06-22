@@ -2,29 +2,29 @@ import SwiftUI
 import WidgetKit
 import AppIntents
 
-// 跟随系统外观：颜色取自资源目录的颜色集（每个含 Light/Dark 两套），
-// WidgetKit 会按小组件当前 colorScheme 严格解析，实现白天白底/夜间黑底。
-extension Color {
-    static let wcText  = Color("WCText")
-    static let wcMuted = Color("WCMuted")
-    static let wcDim   = Color("WCDim")
-    static let wcGreen = Color("WCGreen")
-    static let wcAmber = Color("WCAmber")
-    static let wcRed   = Color("WCRed")
-    static let wcGold  = Color("WCGold")
-    static let wcBgTop    = Color("WCBgTop")
-    static let wcBgBottom = Color("WCBgBottom")
+// 组件配色跟随系统外观：把生效外观（= 当前系统外观）算成一个进程内全局，
+// 颜色按它显式取浅/深值；背景渐变也读同一全局，一起翻。由 ThemedContainer 在渲染前写入。
+enum WCColors {
+    static var dark = true
 }
 
-extension View {
-    // 按外观偏好强制 colorScheme；.system 时不覆盖，交还系统跟随。
-    @ViewBuilder func widgetTheme(_ theme: WidgetTheme) -> some View {
-        switch theme {
-        case .system: self
-        case .light:  self.environment(\.colorScheme, .light)
-        case .dark:   self.environment(\.colorScheme, .dark)
-        }
-    }
+private func rgb(_ r: Double, _ g: Double, _ b: Double) -> Color {
+    Color(.sRGB, red: r, green: g, blue: b, opacity: 1)
+}
+
+extension Color {
+    // 文字/灰阶
+    static var wcText:  Color { WCColors.dark ? rgb(0.91, 0.92, 0.95) : rgb(0.11, 0.12, 0.15) }
+    static var wcMuted: Color { WCColors.dark ? rgb(0.58, 0.60, 0.66) : rgb(0.40, 0.42, 0.47) }
+    static var wcDim:   Color { WCColors.dark ? rgb(0.44, 0.46, 0.52) : rgb(0.55, 0.57, 0.62) }
+    // 强调色（白天加深，保证白底对比）
+    static var wcGreen: Color { WCColors.dark ? rgb(0.24, 0.86, 0.59) : rgb(0.09, 0.60, 0.39) }
+    static var wcAmber: Color { WCColors.dark ? rgb(1.0,  0.82, 0.40) : rgb(0.82, 0.52, 0.06) }
+    static var wcRed:   Color { WCColors.dark ? rgb(1.0,  0.33, 0.44) : rgb(0.84, 0.16, 0.27) }
+    static var wcGold:  Color { WCColors.dark ? rgb(0.93, 0.76, 0.38) : rgb(0.70, 0.53, 0.18) }
+    // 卡片背景渐变
+    static var wcBgTop:    Color { WCColors.dark ? rgb(0.10, 0.11, 0.16) : rgb(1.0,  1.0,  1.0) }
+    static var wcBgBottom: Color { WCColors.dark ? rgb(0.05, 0.06, 0.09) : rgb(0.94, 0.95, 0.97) }
 }
 
 // MARK: - 区块标题
