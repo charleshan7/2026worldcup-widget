@@ -119,24 +119,26 @@ struct WorldCupWidgetEntryView: View {
     }
 }
 
-// 渲染前算出生效外观写入进程内全局，颜色据此显式取浅/深值。
-// 外观来自菜单栏 App 的本地服务（entry.theme）：light/dark 强制，否则跟随系统 @Environment(\.colorScheme)。
+// 渲染前据 entry.theme + 系统外观算出"生效深浅",解析成调色板:
+// 背景渐变直接用,内容经 \.wcPalette 环境下发。每套外观各算各的,不共享可变状态 → 不会串台。
+// 外观来自菜单栏 App 的本地服务（entry.theme）：light/dark 强制,否则跟随系统 @Environment(\.colorScheme)。
 struct ThemedContainer: View {
     let entry: WCEntry
     @Environment(\.colorScheme) private var systemScheme
 
     var body: some View {
-        let scheme: ColorScheme
+        let dark: Bool
         switch entry.theme {
-        case "light": scheme = .light
-        case "dark":  scheme = .dark
-        default:      scheme = systemScheme   // system / 取不到 → 跟随系统
+        case "light": dark = false
+        case "dark":  dark = true
+        default:      dark = (systemScheme == .dark)   // system / 取不到 → 跟随系统
         }
-        WCColors.dark = (scheme == .dark)
+        let pal = WCPalette.make(dark: dark)
         return WorldCupWidgetEntryView(entry: entry)
+            .environment(\.wcPalette, pal)
             .containerBackground(for: .widget) {
                 LinearGradient(
-                    colors: [Color.wcBgTop, Color.wcBgBottom],
+                    colors: [pal.bgTop, pal.bgBottom],
                     startPoint: .top, endPoint: .bottom
                 )
             }
